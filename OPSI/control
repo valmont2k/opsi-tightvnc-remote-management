@@ -1,0 +1,102 @@
+[Package]
+version: 24
+depends: 
+incremental: False
+
+[Product]
+type: localboot
+id: vnc
+name: TightVNC
+description: VNC Viewer und Server
+advice: Kostenfrei
+version: 2.8.11
+priority: 0
+licenseRequired: False
+productClasses: 
+setupScript: setup.opsiscript
+uninstallScript: uninstall.opsiscript
+updateScript: 
+alwaysScript: 
+onceScript: 
+customScript: 
+userLoginScript: 
+
+[ProductProperty]
+type: unicode
+name: mode
+multivalue: False
+editable: False
+description: Server, Viewer or Server and Viewer
+values: ["Server", "Viewer", "Viewer,Server"]
+default: ["Server"]
+
+[ProductProperty]
+type: unicode
+name: viewer_associate_vnc_extension
+multivalue: False
+editable: False
+description: Viewer mit VNC extension verkuepfen
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: viewer_add_firewall_exception
+multivalue: False
+editable: True
+description: viewer: Firewall Ausnahme definieren
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: server_register_as_service
+multivalue: False
+editable: False
+description: Server: Wird als Dienst ausgefhrt
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: server_add_firewall_exception
+multivalue: False
+editable: False
+description: Server: Firewall Ausnahme
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: server_allow_sas
+multivalue: False
+editable: False
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: usepassword
+multivalue: False
+editable: False
+description: Yes/No
+values: ["0", "1"]
+default: ["1"]
+
+[ProductProperty]
+type: unicode
+name: password
+multivalue: False
+editable: True
+description: Server Password
+values: ["dfvkj743wefergfuwerSS"]
+default: ["dfvkj743wefergfuwerSS"]
+
+[Changelog]
+vnc (1.0-2.8.11) testing; urgency=low
+
+  * Initial package
+
+ -- atarasov <atarasov@game-forest.com>  Mon, 08 Oct 2018 13:50:04 +0000
+
+

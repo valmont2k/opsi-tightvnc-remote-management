@@ -1,0 +1,216 @@
+[Actions]
+requiredWinstVersion >= "4.10.8.6"
+ 
+DefVar $MsiId32$
+DefVar $UninstallProgram32$
+DefVar $MsiId64$
+DefVar $UninstallProgram64$
+DefVar $LogDir$
+DefVar $ProductId$  
+DefVar $MinimumSpace$
+DefVar $InstallDir32$
+DefVar $InstallDir64$
+DefVar $ExitCode$
+DefVar $LicenseRequired$
+DefVar $LicenseKey$
+DefVar $LicensePool$
+DefVar $INST_SystemType$
+DefVar $INST_architecture$
+ 
+Set $INST_SystemType$ = GetSystemType
+Set $INST_architecture$ = GetProductProperty("install_architecture","system specific")
+ 
+ 
+Set $LogDir$ = "%SystemDrive%\tmp"
+ 
+; ----------------------------------------------------------------
+; - Please edit the following values                             -
+; ----------------------------------------------------------------
+;$ProductId$ should be the name of the product in opsi
+; therefore please: only lower letters, no umlauts, 
+; no white space use '-' as a seperator
+Set $ProductId$       = "TightVNC"
+Set $MinimumSpace$    = "100 MB"
+; the path were we find the product after the installation
+Set $InstallDir32$      = "%ProgramFiles32Dir%\<path to the product>"
+Set $InstallDir64$      = "%ProgramFiles64Dir%\<path to the product>"
+Set $LicenseRequired$ = "false"
+Set $LicensePool$     = "p_" + $ProductId$
+; ----------------------------------------------------------------
+ 
+if not(HasMinimumSpace ("%SystemDrive%", $MinimumSpace$))
+    LogError "Not enough space on %SystemDrive%, " + $MinimumSpace$ + " on drive %SystemDrive% needed for " + $ProductId$
+    isFatalError
+    ; Stop process and set installation status to failed
+else
+    comment "Show product picture"
+    ShowBitmap "%ScriptPath%\" + $ProductId$ + ".png" $ProductId$
+ 
+    if FileExists("%ScriptPath%\delsub.opsiscript")
+	comment "Start uninstall sub section"
+	Sub "%ScriptPath%\delsub.opsiscript"
+    endif
+ 
+    comment "installing"
+ 
+    if (($INST_SystemType$ = "x86 System") and ($INST_architecture$ = "system specific")) or ($INST_architecture$ = "both") or ($INST_architecture$ = "32 only")
+	Message "Installing " + $ProductId$ + " 32 Bit..."
+	sub_generate_setupcommand
+	comment "Start setup program"
+	Winbatch_install_32
+	Sub_check_exitcode
+ 
+    endif
+ 
+    if ($INST_SystemType$ = "64 Bit System") and (($INST_architecture$ = "system specific") or ($INST_architecture$ = "both") or ($INST_architecture$ = "64 only"))
+	Message "Installing " + $ProductId$ + " 64 Bit..."
+	sub_generate_setupcommand
+	comment "Start setup program"
+	Winbatch_install_64
+	Sub_check_exitcode
+ 
+    endif
+ 
+endif
+ 
+[Winbatch_install_32]
+ ;https://www.tightvnc.com/download/2.8.11/tightvnc-2.8.11-gpl-setup-32bit.msi
+; === MSI package =======================================================================================
+msiexec /i %scriptpath%\tightvnc-2.8.11-gpl-setup-32bit.msi /passive /norestart $setupMSI$ 
+ 
+ 
+ 
+[Winbatch_install_64]
+; === MSI package =======================================================================================
+msiexec /i %scriptpath%\tightvnc-2.8.11-gpl-setup-64bit.msi /passive /norestart $setupMSI$ 
+ 
+ 
+[Sub_check_exitcode]
+comment "Test for installation success via exit code"
+set $ExitCode$ = getLastExitCode
+; informations to exit codes see
+; http://msdn.microsoft.com/en-us/library/aa372835(VS.85).aspx
+; http://msdn.microsoft.com/en-us/library/aa368542.aspx
+if ($ExitCode$ = "0")
+    comment "Looks good: setup program gives exitcode zero"
+else
+    comment "Setup program gives a exitcode unequal zero: " + $ExitCode$
+    if ($ExitCode$ = "1605")
+	comment "ERROR_UNKNOWN_PRODUCT	1605	This action is only valid for products that are currently installed."
+	comment "Uninstall of a not installed product failed - no problem"
+    else
+	if ($ExitCode$ = "1641")
+	    comment "looks good: setup program gives exitcode 1641"
+	    comment "ERROR_SUCCESS_REBOOT_INITIATED	1641	The installer has initiated a restart. This message is indicative of a success."
+	else
+	    if ($ExitCode$ = "3010")
+		comment "looks good: setup program gives exitcode 3010"
+		comment "ERROR_SUCCESS_REBOOT_REQUIRED	3010	A restart is required to complete the install. This message is indicative of a success."
+	    else
+		logError "Fatal: Setup program gives an unknown exitcode unequal zero: " + $ExitCode$
+		isFatalError
+	    endif
+	endif
+    endif
+endif
+ 
+ 
+;-------------------------------------------------------------------------------
+; 			 Generating the Setup command
+;-------------------------------------------------------------------------------
+[sub_generate_setupcommand]
+; Define String and Variables
+DefStringList $parameter$ 
+;Stringlist for MSI Parameter
+DefVar $usepassword2$ 
+;UsePassword Yes or No
+DefVar $password2$ 
+;The VNC Connection Password
+DefVar $setupMSI$ 
+;The full MSI Setup command
+DefVar $ownParameter$ 
+;Variable for define own commands via productproperty
+
+
+ 
+; Default Options
+DefVar $Mode$
+DefVar $ADDLOCAL$
+DefVar $VIEWER_ASSOCIATE_VNC_EXTENSION$
+DefVar $SERVER_REGISTER_AS_SERVICE$
+DefVar $SERVER_ADD_FIREWALL_EXCEPTION$
+DefVar $VIEWER_ADD_FIREWALL_EXCEPTION$
+DefVar $SERVER_ALLOW_SAS$
+ 
+ 
+set $Mode$ = GetproductProperty("mode","Server")
+set $parameter$= addtolist($parameter$,'ADDLOCAL='+$Mode$ )
+ 
+ 
+;Viewer Parameter
+ 
+if ($Mode$ = "viewer")
+    sub_set_ViewerOptions
+else
+    if ($Mode$ = "server")
+	sub_set_ServerOptions
+    else
+	if ($Mode$ = "Viewer,Server")
+	    sub_set_ServerOptions
+	    sub_set_ViewerOptions
+	else
+	    isFatalError 
+	    comment "You must set the correct ProductProperty"
+	endif
+    endif
+endif
+ 
+ 
+;create setup command
+for %s% in $parameter$ do set $setupMSI$ = $setupMSI$+" %s%"
+comment $setupMSI$
+ 
+ 
+[sub_set_ViewerOptions]
+set $VIEWER_ASSOCIATE_VNC_EXTENSION$ = GetproductProperty("VIEWER_ASSOCIATE_VNC_EXTENSION","1")
+set $VIEWER_ADD_FIREWALL_EXCEPTION$ = GetproductProperty("VIEWER_ADD_FIREWALL_EXCEPTION","1")
+set $parameter$= addtolist($parameter$,"VIEWER_ASSOCIATE_VNC_EXTENSION="+ $VIEWER_ASSOCIATE_VNC_EXTENSION$ )
+set $parameter$= addtolist($parameter$,"VIEWER_ADD_FIREWALL_EXCEPTION="+ $VIEWER_ADD_FIREWALL_EXCEPTION$ )
+ 
+ 
+[sub_set_ServerOptions]
+set $SERVER_REGISTER_AS_SERVICE$ = GetproductProperty("SERVER_REGISTER_AS_SERVICE", "0")
+set $SERVER_ADD_FIREWALL_EXCEPTION$ = GetproductProperty("SERVER_ADD_FIREWALL_EXCEPTION", "1")
+set $SERVER_ALLOW_SAS$ = GetproductProperty("SERVER_ALLOW_SAS", "1")
+set $password2$ = "VALUE_OF_PASSWORD="+GetproductProperty('password', 'password')
+set $usepassword2$ = GetproductProperty('usepassword', '1')
+ 
+ 
+set $parameter$= addtolist($parameter$,"SERVER_REGISTER_AS_SERVICE="+ $SERVER_REGISTER_AS_SERVICE$ )
+ 
+ 
+ 
+if ($SERVER_REGISTER_AS_SERVICE$ = "1") 
+    set $parameter$= addtolist($parameter$,"SERVER_ADD_FIREWALL_EXCEPTION="+ $SERVER_ADD_FIREWALL_EXCEPTION$ )
+    set $parameter$= addtolist($parameter$,"SERVER_ALLOW_SAS="+ $SERVER_ALLOW_SAS$)
+ 
+    if ($usepassword2$ = "1")
+;    if ("1" = "1")
+	set $parameter$= addtolist($parameter$,"SET_USECONTROLAUTHENTICATION=1 ")
+	set $parameter$= addtolist($parameter$,"VALUE_OF_USEVNCAUTHENTICATION=1 ")
+	set $parameter$= addtolist($parameter$,"SET_PASSWORD=1 ")
+	set $parameter$= addtolist($parameter$,$password2$  )
+;	set $parameter$= addtolist($parameter$,"VALUE_OF_PASSWORD=dfbsdSDVsd435534sfdvdsfb"  )
+    else
+	comment ="No Password set"
+    endif
+ 
+else
+    comment = "Server is not registered as service"
+endif
+ 
+ 
+ 
+ 
+;------- End -------------------------------------------------------------------
+;-------------------------------------------------------------------------------
