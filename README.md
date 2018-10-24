@@ -1,5 +1,6 @@
 # opsi-tightvnc-remote-management
 
+0) Change password on your own in $this_repo\var\lib\opsi\config.ini and $this_repo\CLIENT_DATA\setup.opsiscript, right now it dfbsdSDVsd435534sfdvdsfb
 1) Install tightvnc on admin mashine
 2) add files from OPSI and CLIENT_DATA folders to destination opsi-workbench
 3) create opsi-packet "tightvnc" by command opsi-makeproductfile
